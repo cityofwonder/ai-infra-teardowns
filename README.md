@@ -38,8 +38,8 @@ The two tracks need different oracles - a binary crash/exec for the main track, 
 ## Current status
 
 - [x] L0 - trust-model lens defined (source -> mediation -> sink)
-- [ ] L1 - Langflow flagship fix-diffs (cluster A: unsandboxed exec done; authz/IDOR, file-ops pending)
-- [ ] L2 - isolated-VM reproduction, per-CVE snapshots
+- [~] L1 - Langflow flagship fix-diffs ([exec done](langflow/CVE-2025-3248/); authz/IDOR, file-ops pending)
+- [~] L2 - isolated-VM reproduction ([exec reproduced](langflow/CVE-2025-3248/#reproduction) in a pinned 1.2.0 container; snapshots per-CVE pending)
 - [ ] L3 - Langflow recurrence taxonomy
 - [ ] L4 - peer-framework hunt (Dify / n8n / MCP servers)
 
@@ -56,24 +56,25 @@ Method: read the fix commit first (the answer key), map it onto source -> mediat
 - Does it predict recurrence? (It does: the same `exec` sink reappears in later CVEs; an early patch that only added an auth check left the sink in place under default auto-login.)
 - Intentional failure test: if I read only the CVE *text* and not the diff, do I misattribute the fix? (Yes - the first patch reads as an auth fix, but the sink survived until a later commit removed it. Reading the diff is what separates the real fix from the cosmetic one.)
 
-**Evidence**
-<!-- TODO: add after reproduction -->
-- fix-diff excerpt: auth-only patch vs. sink-removal commit
-- reproduction log: define-time `exec` via default-argument evaluation
+**Evidence** — [`langflow/`](langflow/) (index table: CVE × class × sink × status)
+- [CVE-2025-3248 teardown](langflow/CVE-2025-3248/) — class `exec` — full source→sink analysis, dataflow diagram, Semgrep differential (vulnerable vs. patched), and the define-time `exec` reproduction (file write via default-argument evaluation).
+- Fix-diff reading: the first patch (1.3.0) reads as an auth fix, but the `exec` sink survived until a later commit (GHSA-2wcq-pvw2-xh7v) made `validate_code` compile-only — the "answer key" is the second commit, not the first.
 
 ## Repository layout
 
-<!-- fill in as it grows -->
+Flat on purpose: one folder per target platform, one folder per CVE under it — no file
+is more than two directories deep. The **vulnerability class** (exec / authz / file / …)
+is not a directory; it is a tag in each CVE's README and a column in the platform index
+table, so the recurrence taxonomy (L3) reads off a sortable table instead of a deep tree.
 
-    lens/                 shared trust-model checklist (the "engine")
-    harness/              ASR harness for the semantic track
-    teardowns/
-      langflow/
-        a-exec/           trust-model map, fix-diff notes, poc, repro log
-        b-authz/
-        c-file/
-      dify/
-      mcp/
+    lens/                 shared trust-model checklist (the "engine")      [planned]
+    harness/              ASR harness for the semantic track               [planned]
+    tools/                taint-graph pipeline (semgrep rule + renderers)
+    prompts/              research prompts / method transcripts
+    langflow/
+      README.md           index table: CVE | class | sink | severity | status
+      CVE-2025-3248/      teardown: README + analysis + dataflow.svg + scans
+    dify/  mcp/           (future platforms)
 
 ## How to run
 
