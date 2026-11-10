@@ -1,0 +1,44 @@
+# Semgrep rules for CVE-2025-3248 (Langflow unauthenticated /validate/code RCE)
+# Fires on <=1.2.0 (vulnerable), silent on >=1.3.0 / 1.13.1 (patched).
+rules:
+  # (1) INTRAPROCEDURAL TAINT: untrusted `code` reaches a code-exec sink.
+  - id: cve-2025-3248-code-to-exec
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: >
+      CVE-2025-3248: untrusted `code` reaches a code-execution sink
+      (exec / importlib.import_module) on the validation path.
+    pattern-sources:
+      - pattern: code
+    pattern-sinks:
+      - pattern: exec(...)
+      - pattern: importlib.import_module(...)
+
+  # (2) RAW SINK: exec() inside validate_code() — removed by the patch.
+  - id: cve-2025-3248-exec-sink
+    languages: [python]
+    severity: ERROR
+    message: "CVE-2025-3248 sink: exec() of compiled user code during validation."
+    patterns:
+      - pattern: exec($X)
+      - pattern-inside: |
+          def validate_code(...):
+            ...
+
+  # (3) MISSING AUTH: /validate/code handler without a CurrentActiveUser dependency.
+  - id: cve-2025-3248-unauth-endpoint
+    languages: [python]
+    severity: WARNING
+    message: >
+      /validate/code handler takes `code: Code` with no CurrentActiveUser
+      dependency — unauthenticated reach to validate_code().
+    patterns:
+      - pattern: |
+          @router.post("/code", ...)
+          async def $F(code: Code) -> $R:
+            ...
+      - pattern-not: |
+          @router.post("/code", ...)
+          async def $F(code: Code, $U: CurrentActiveUser, ...) -> $R:
+            ...
