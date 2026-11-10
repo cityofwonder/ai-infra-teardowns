@@ -1,0 +1,4 @@
+out/
+figflow-out/
+__pycache__/
+*.pyc
